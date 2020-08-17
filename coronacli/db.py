@@ -60,7 +60,6 @@ class DB:
         :param values - a list of lists of values to insert into, one sublist per record
         """
         # TODO wrap date and timestamp values in single quotes; move to utils.py
-        # TODO Construct query first with all records then execute once instead of for each record
         assert len(col_names) == len(values)
         for idx, value_obj in enumerate(values):
             record = ', '.join(
