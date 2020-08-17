@@ -2,7 +2,7 @@ import argparse
 
 from blessings import Terminal
 
-from coronacli import db
+from coronacli import db, config, scraper, utils
 
 
 class TruncatedDisplay(object):
@@ -82,6 +82,29 @@ def _retrieve_arguments(args):
     return argument_map
 
 
+def _get_country_data_values(db, scraper_class):
+    # Scrape the data
+    scraper = scraper_class()
+    covid_data, country_information = scraper.scrape()
+
+    # Get supported columns to record in DB table
+    covid_data_columns = set(db.get_column_names_from_schema(config.COVID_BY_COUNTRY_TABLE))
+    country_information_columns = set(db.get_column_names_from_schema(config.COUNTRY_INFO_TABLE))
+
+    # Construct country information values to insert into DB table
+    country_info_values, country_info_col_names = utils.conform_db_record(
+        country_information, country_information_columns)
+    # Construct covid data values to insert into db table
+    covid_data_values, covid_data_col_names = utils.conform_db_record(covid_data, covid_data_columns)
+
+    return country_info_values, country_info_col_names, covid_data_values, covid_data_col_names
+
+
+def _insert_into_db(db, table, col_names, values):
+    # Insert the values into DB tables
+    db.insert_into_table(table, col_names, values)
+
+
 def main():
     args = _parse_command_line()
     run_parameters = _retrieve_arguments(args)
@@ -89,14 +112,22 @@ def main():
     # TODO throw excepts for option combinations that are impossible (e.g. country = de, city - ny)
     # TODO throw excepts for unsupported options (e.g. country/state/city without data)
 
+    # TODO only create tables once or when user asks for reset
+    # Create database to store covid case and geographical data extracted from Internet
+    corona_db = db.DB(dbname=config.DBNAME)
+    corona_db.create_tables()
+
+    # Extract and insert data into DB
+    print("Extracting data...")
+    country_info_values, country_info_col_names, covid_data_values, covid_data_col_names = \
+        _get_country_data_values(corona_db, scraper.get_scraper(config.COUNTRY_SCRAPER_NAME))
+    _insert_into_db(corona_db, config.COUNTRY_INFO_TABLE, country_info_col_names, country_info_values)
+    _insert_into_db(corona_db, config.COVID_BY_COUNTRY_TABLE, covid_data_col_names, covid_data_values)
+
     # TODO mimic this for display later
     '''
     less = TruncatedDisplay(num_lines=50)
     "\n".join([str(x) for x in range(100)]) | less'''
-
-    # Create database to store covid case and georgraphical data extracted from Internet
-    corona_db = db.DB(dbname='coronadb')
-    corona_db.create_tables()
 
 
 if __name__ == "__main__":
