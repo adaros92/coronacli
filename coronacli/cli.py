@@ -1,5 +1,24 @@
 import argparse
 
+from blessings import Terminal
+
+from coronacli import db
+
+
+class TruncatedDisplay(object):
+    """ Performs similar to less command in unix OS where stdout is chunked up into a set number of
+    lines and user needs to provide input to continue displaying lines """
+    def __init__(self, num_lines):
+        self.num_lines = num_lines
+
+    def __ror__(self, other):
+        s = str(other).split("\n")
+        for i in range(0, len(s), self.num_lines):
+            print(*s[i: i + self.num_lines], sep="\n")
+            val = input("Press <Enter> for more or <q> to quit\n")
+            if val == 'q':
+                exit(0)
+
 
 def _parse_command_line():
     """ Contains main parsing logic to extract user input via the CLI """
@@ -69,6 +88,15 @@ def main():
 
     # TODO throw excepts for option combinations that are impossible (e.g. country = de, city - ny)
     # TODO throw excepts for unsupported options (e.g. country/state/city without data)
+
+    # TODO mimic this for display later
+    '''
+    less = TruncatedDisplay(num_lines=50)
+    "\n".join([str(x) for x in range(100)]) | less'''
+
+    # Create database to store covid case and georgraphical data extracted from Internet
+    corona_db = db.DB(dbname='coronadb')
+    corona_db.create_tables()
 
 
 if __name__ == "__main__":
