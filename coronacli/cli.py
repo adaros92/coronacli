@@ -1,7 +1,5 @@
 import argparse
 
-from blessings import Terminal
-
 from coronacli import db, config, scraper, utils
 
 
@@ -41,10 +39,11 @@ def _parse_command_line():
         default='all', help="an age group from the allowed choices"
     )
     parser.add_argument(
-        '-bc', '--by_country', action='store_true', default=True, help="report results by country")
+        '-bc', '--by_country', action='store_true', help="report results by country")
     parser.add_argument('-bs', '--by_state', action='store_true', help="report results by state")
     parser.add_argument('-bci', '--by_city', action='store_true', help="report results by city")
     parser.add_argument('-ba', '--by_age', action='store_true', help="report results by age")
+    parser.add_argument('-r', '--reset', action='store_true', help="extract new data")
 
     return parser.parse_args()
 
@@ -65,6 +64,7 @@ def _retrieve_arguments(args):
     summarize_by_country = args.by_country
     summarize_by_state = args.by_state
     summarize_by_city = args.by_city
+    reset_db = args.reset
 
     # Combine them all together in one object to dictate behavior downstream
     argument_map = {
@@ -77,7 +77,8 @@ def _retrieve_arguments(args):
             "country": summarize_by_country,
             "state": summarize_by_state,
             "city": summarize_by_city
-        }
+        },
+        "reset_db": reset_db
     }
     return argument_map
 
@@ -108,27 +109,24 @@ def _insert_into_db(db, table, col_names, values):
 def main():
     args = _parse_command_line()
     run_parameters = _retrieve_arguments(args)
+    print(run_parameters)
 
     # TODO throw excepts for option combinations that are impossible (e.g. country = de, city - ny)
     # TODO throw excepts for unsupported options (e.g. country/state/city without data)
 
-    # TODO only create tables once or when user asks for reset
-    # Create database to store covid case and geographical data extracted from Internet
-    corona_db = db.DB(dbname=config.DBNAME)
-    corona_db.create_tables()
+    if not db.DB.db_exists(config.DBNAME) or run_parameters["reset_db"]:
+        # Create database to store covid case and geographical data extracted from Internet
+        corona_db = db.DB(dbname=config.DBNAME)
+        corona_db.create_tables()
 
-    # Extract and insert data into DB
-    print("Extracting data...")
-    country_info_values, country_info_col_names, covid_data_values, covid_data_col_names = \
-        _get_country_data_values(corona_db, scraper.get_scraper(config.COUNTRY_SCRAPER_NAME))
-    _insert_into_db(corona_db, config.COUNTRY_INFO_TABLE, country_info_col_names, country_info_values)
-    _insert_into_db(corona_db, config.COVID_BY_COUNTRY_TABLE, covid_data_col_names, covid_data_values)
+        # Extract and insert data into DB
+        print("Extracting data...")
+        country_info_values, country_info_col_names, covid_data_values, covid_data_col_names = \
+            _get_country_data_values(corona_db, scraper.get_scraper(config.COUNTRY_SCRAPER_NAME))
+        _insert_into_db(corona_db, config.COUNTRY_INFO_TABLE, country_info_col_names, country_info_values)
+        _insert_into_db(corona_db, config.COVID_BY_COUNTRY_TABLE, covid_data_col_names, covid_data_values)
 
     # TODO mimic this for display later
     '''
     less = TruncatedDisplay(num_lines=50)
     "\n".join([str(x) for x in range(100)]) | less'''
-
-
-if __name__ == "__main__":
-    main()

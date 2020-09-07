@@ -1,3 +1,5 @@
+import os
+
 from sqlalchemy import create_engine, Table, MetaData
 
 from coronacli.config import TABLES, SQLITE
@@ -24,6 +26,13 @@ class DB:
             Table(table_name, metadata, *columns)
         metadata.create_all(self.db_engine)
 
+    def drop_tables(self, table_collection=None):
+        if not table_collection:
+            table_collection = TABLES
+        for table, table_map in table_collection.items():
+            table_name = table_map['table_name']
+            self.execute_query("DROP TABLE {0}".format(table_name))
+
     def execute_query(self, query, expect_results=False):
         connection = self.db_engine.connect()
         execution = connection.execute(query)
@@ -32,6 +41,34 @@ class DB:
             results = execution.fetchall()
         connection.close()
         return results
+
+    def insert_into_table(self, table_name, col_names, values):
+        """ Inserts the given values into the given table in the database
+
+        :param table_name - the name of the table to insert record values into
+        :param col_names - a list of column names in same order as given values
+        :param values - a list of lists of values to insert into, one sublist per record
+        """
+        # TODO wrap date and timestamp values in single quotes; move to utils.py
+        assert len(col_names) == len(values)
+        for idx, value_obj in enumerate(values):
+            record = ', '.join(
+                ["'{0}'".format(val) if isinstance(val, str) else str(val) for val in value_obj])
+            cols = ', '.join(col_names[idx])
+            query = "INSERT INTO {0}({1}) VALUES({2});".format(table_name, cols, record)
+            self.execute_query(query)
+
+    def drop(self):
+        query = "DROP DATABASE {0};".format(self.dbname)
+        if self.dbtype == SQLITE.lower():
+            abs_path = '/'.join(os.path.dirname(__file__).split('/')[:-1]) + '/{0}'
+            os.remove(abs_path.format(self.dbname))
+        else:
+            self.execute_query(query)
+
+    def select_all_from_table(self, table_name):
+        query = "SELECT * FROM {0};".format(table_name)
+        return self.execute_query(query, expect_results=True)
 
     @staticmethod
     def get_cols_from_schema(table_name, table_collection=None):
@@ -52,22 +89,15 @@ class DB:
         cols = DB.get_cols_from_schema(table_name, table_collection)
         return [col['col_obj'] for col in cols]
 
-    def insert_into_table(self, table_name, col_names, values):
-        """ Inserts the given values into the given table in the database
+    @staticmethod
+    def db_exists(name, db_type=SQLITE):
+        """ Checks to see if database by given name exists
 
-        :param table_name - the name of the table to insert record values into
-        :param col_names - a list of column names in same order as given values
-        :param values - a list of lists of values to insert into, one sublist per record
+        :param name - the name of the database to check for
+        :param db_type - the database type
+        :returns true if the database exists, false otherwise
         """
-        # TODO wrap date and timestamp values in single quotes; move to utils.py
-        assert len(col_names) == len(values)
-        for idx, value_obj in enumerate(values):
-            record = ', '.join(
-                ["'{0}'".format(val) if isinstance(val, str) else str(val) for val in value_obj])
-            cols = ', '.join(col_names[idx])
-            query = "INSERT INTO {0}({1}) VALUES({2});".format(table_name, cols, record)
-            self.execute_query(query)
-
-    def select_all_from_table(self, table_name):
-        query = "SELECT * FROM {0};".format(table_name)
-        return self.execute_query(query, expect_results=True)
+        if db_type == SQLITE:
+            abs_path = '/'.join(os.path.dirname(__file__).split('/')[:-1]) + '/{0}'
+            return os.path.isfile(abs_path.format(name))
+        return False

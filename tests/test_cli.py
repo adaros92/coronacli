@@ -11,6 +11,7 @@ def test_retrieve_arguments():
         by_state = False
         by_city = False
         by_age = True
+        reset = True
     args = Args()
 
     parsed_args = cli._retrieve_arguments(args)
@@ -24,7 +25,8 @@ def test_retrieve_arguments():
             "country": False,
             "state": False,
             "city": False
-        }
+        },
+        "reset_db": True
     }
     assert parsed_args == expected_result
 

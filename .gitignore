@@ -31,6 +31,9 @@ share/python-wheels/
 MANIFEST
 coronadb
 coronadb/
+main.py
+install.sh
+cleanup.sh
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
