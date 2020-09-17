@@ -37,6 +37,9 @@ TABLES = {
         ]
     }
 }
+INPUT_TO_DB_MAP = {
+    'countries': ('country_code', 'String')
+}
 OWID_DATA_URL = "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.json"
 COUNTRY_INFO_TABLE = "owid_country_data"
 COVID_BY_COUNTRY_TABLE = "owid_covid_data"
