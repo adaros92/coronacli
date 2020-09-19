@@ -28,19 +28,20 @@ TABLES = {
         {'col_name': 'population_density', 'col_obj': Column('population_density', Numeric(38, 7))},
         {'col_name': 'aged_65_older', 'col_obj': Column('aged_65_older', Numeric(38, 7))},
         {'col_name': 'aged_70_older', 'col_obj': Column('aged_70_older', Numeric(38, 7))},
-        {'col_name': 'gdp_per_capita', 'col_obj': Column('gdp_per_capita', Numeric(38, 7))},
-        {'col_name': 'cardiovasc_death_rate', 'col_obj': Column('cardiovasc_death_rate', Numeric(38, 7))},
-        {'col_name': 'diabetes_prevalence', 'col_obj': Column('diabetes_prevalence', Numeric(38, 7))},
-        {'col_name': 'handwashing_facilities', 'col_obj': Column('handwashing_facilities', Numeric(38, 7))},
-        {'col_name': 'hospital_beds_per_thousand', 'col_obj': Column('hospital_beds_per_thousand', Numeric(38, 7))},
-        {'col_name': 'life_expectancy', 'col_obj': Column('life_expectancy', Numeric(38, 7))}
+        {'col_name': 'gdp_per_capita', 'col_obj': Column('gdp_per_capita', Numeric(38, 7))}
         ]
     }
 }
 INPUT_TO_DB_MAP = {
-    'countries': ('country_code', 'String')
+    # Input to CLI: (corresponding db column, db column type, value representing total sum)
+    'countries': ('country_code', 'String', 'OWID_WRL')
 }
 OWID_DATA_URL = "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.json"
 COUNTRY_INFO_TABLE = "owid_country_data"
 COVID_BY_COUNTRY_TABLE = "owid_covid_data"
 COUNTRY_SCRAPER_NAME = "OurWorldInData"
+COUNTRY_TRANSFORMER = {
+    "demographics_sort_key": [["country_code"], [1]],
+    "cases_sort_key": [['country_code', 'date'], [1, 0]],
+    "demographics_join_key": ["country_code"]
+}

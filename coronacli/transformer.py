@@ -1,4 +1,6 @@
-from coronacli.config import INPUT_TO_DB_MAP, COUNTRY_INFO_TABLE, COVID_BY_COUNTRY_TABLE
+from coronacli import config
+
+import pandas as pd
 
 from abc import ABC, abstractmethod
 
@@ -69,15 +71,15 @@ class TransformerLogicBuilder(object):
             if comparator not in self._supported_comparators:
                 raise ValueError('{0} is not one of {1}'.format(comparator, self._supported_comparators))
             elif comparator in {'in', 'not in'} and col_type in ('String', 'Date', 'Timestamp'):
-                processed_val = '({0})'.format(','.join(['{0}'.format(x) for x in val]))
+                processed_val = '({0})'.format(','.join(["'{0}'".format(x) for x in val]))
             elif comparator in {'in', 'not in'}:
                 processed_val = '({0})'.format(','.join(val))
             elif col_type in ('String', 'Date', 'Timestamp'):
-                processed_val = '{0}'.format(val)
+                processed_val = "'{0}'".format(val)
             else:
                 processed_val = val
 
-            self.logic.filters += "and {0} {1} {2}".format(col, comparator, processed_val)
+            self.logic.filters += " and {0} {1} {2}".format(col, comparator, processed_val)
 
     def select_from(self, table_name, alias=None):
         processed_table_name = table_name
@@ -91,7 +93,7 @@ class Transformer(ABC):
     def __init__(self, parameters, db):
         super().__init__()
         self.parameters = parameters
-        self.expected_parameters = [*INPUT_TO_DB_MAP]
+        self.expected_parameters = [*config.INPUT_TO_DB_MAP]
         self._check_input()
         self.db = db
         self.logic = None
@@ -102,12 +104,16 @@ class Transformer(ABC):
         column_names, values, types, comparators = [], [], [], []
         for parameter in self.expected_parameters:
             val = self.parameters.get(parameter, "")
-            if val != 'all' and val != ['all']:
+            column_info = config.INPUT_TO_DB_MAP[parameter]
+            column_names.append(column_info[0])
+            types.append(column_info[1])
+            if val == 'ALL' or val == ['ALL']:
+                comparators.append("=")
+                values.append(column_info[2])
+            else:
                 # Get the corresponding column name and type in the DB for the expected parameter to filter
-                column_info = INPUT_TO_DB_MAP[parameter]
-                column_names.append(column_info[0])
-                types.append(column_info[1])
                 comparators.append('in')
+                values.append(val)
         builder.filter_by(column_names, values, types, comparators)
         self.logic = builder.logic
 
@@ -125,8 +131,10 @@ class CountryTransformer(Transformer):
 
     def __init__(self, parameters, db):
         super().__init__(parameters, db)
-        self.country_demographics_table_name = COUNTRY_INFO_TABLE
-        self.total_country_cases_table_name = COVID_BY_COUNTRY_TABLE
+        self.country_demographics_table_name = config.COUNTRY_INFO_TABLE
+        self.country_demographics_columns = db.get_column_names_from_schema(self.country_demographics_table_name)
+        self.total_country_cases_table_name = config.COVID_BY_COUNTRY_TABLE
+        self.total_country_cases_columns = db.get_column_names_from_schema(self.total_country_cases_table_name)
 
     def _get_country_data(self, table_name):
         builder = TransformerLogicBuilder(self.logic)
@@ -137,6 +145,16 @@ class CountryTransformer(Transformer):
     def transform(self):
         # Get total cases by country
         cases = self._get_country_data(self.total_country_cases_table_name)
-        print(cases)
+        cases_sort_key = config.COUNTRY_TRANSFORMER["cases_sort_key"]
+        cases_df = pd.DataFrame(cases, columns=self.total_country_cases_columns)\
+            .sort_values(by=cases_sort_key[0], ascending=cases_sort_key[1])
+
         # Get country demographics
         demographics = self._get_country_data(self.country_demographics_table_name)
+        demographics_sort_key = config.COUNTRY_TRANSFORMER["demographics_sort_key"]
+        demographics_df = pd.DataFrame(demographics, columns=self.country_demographics_columns)\
+            .sort_values(by=demographics_sort_key[0], ascending=demographics_sort_key[1])
+
+        combined_df = pd.merge(
+            cases_df, demographics_df, on=config.COUNTRY_TRANSFORMER["demographics_join_key"], how='left')
+        return combined_df

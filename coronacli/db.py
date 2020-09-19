@@ -31,7 +31,7 @@ class DB:
             table_collection = TABLES
         for table, table_map in table_collection.items():
             table_name = table_map['table_name']
-            self.execute_query("DROP TABLE {0}".format(table_name))
+            self.execute_query("DROP TABLE IF EXISTS {0}".format(table_name))
 
     def execute_query(self, query, expect_results=False):
         connection = self.db_engine.connect()

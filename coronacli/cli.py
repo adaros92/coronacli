@@ -1,21 +1,6 @@
 import argparse
 
-from coronacli import db, config, scraper, utils, transformer
-
-
-class TruncatedDisplay(object):
-    """ Performs similar to less command in unix OS where stdout is chunked up into a set number of
-    lines and user needs to provide input to continue displaying lines """
-    def __init__(self, num_lines):
-        self.num_lines = num_lines
-
-    def __ror__(self, other):
-        s = str(other).split("\n")
-        for i in range(0, len(s), self.num_lines):
-            print(*s[i: i + self.num_lines], sep="\n")
-            val = input("Press <Enter> for more or <q> to quit\n")
-            if val == 'q':
-                exit(0)
+from coronacli import db, config, scraper, utils, transformer, arguments, display
 
 
 def _parse_command_line():
@@ -48,41 +33,6 @@ def _parse_command_line():
     return parser.parse_args()
 
 
-def _retrieve_arguments(args):
-    """ Further parses arguments from CLI based on type and constructs concise object containing
-    the parameters that will dictate behavior downstream
-
-    :param args - arguments retrieved from call to parser.parse_args as part of argparse library
-    :returns dictionary containing all arguments from CLI
-    """
-    # Retrieve the arguments parsed from CLI
-    countries = args.countries.split(",")
-    states = args.states.split(",")
-    cities = args.cities.split(",")
-    age_group = args.age_group
-    summarize_by_age_group = args.by_age
-    summarize_by_country = args.by_country
-    summarize_by_state = args.by_state
-    summarize_by_city = args.by_city
-    reset_db = args.reset
-
-    # Combine them all together in one object to dictate behavior downstream
-    argument_map = {
-        "countries": countries,
-        "states": states,
-        "cities": cities,
-        "age_group": age_group,
-        "summarize_by": {
-            "age": summarize_by_age_group,
-            "country": summarize_by_country,
-            "state": summarize_by_state,
-            "city": summarize_by_city
-        },
-        "reset_db": reset_db
-    }
-    return argument_map
-
-
 def _get_country_data_values(db, scraper_class):
     # Scrape the data
     scraper = scraper_class()
@@ -108,15 +58,17 @@ def _insert_into_db(db, table, col_names, values):
 
 
 def main():
+    corona_db = db.DB(dbname=config.DBNAME)
     args = _parse_command_line()
-    run_parameters = _retrieve_arguments(args)
+    run_parameters = arguments.retrieve_arguments(args)
+    arguments.validate_arguments(run_parameters, corona_db)
 
     # TODO throw excepts for option combinations that are impossible (e.g. country = de, city - ny)
     # TODO throw excepts for unsupported options (e.g. country/state/city without data)
 
-    corona_db = db.DB(dbname=config.DBNAME)
     if not db.DB.db_exists(config.DBNAME) or run_parameters["reset_db"]:
         # Create database to store covid case and geographical data extracted from Internet
+        corona_db.drop_tables()
         corona_db.create_tables()
 
         # Extract and insert data into DB
@@ -126,10 +78,7 @@ def main():
         _insert_into_db(corona_db, config.COUNTRY_INFO_TABLE, country_info_col_names, country_info_values)
         _insert_into_db(corona_db, config.COVID_BY_COUNTRY_TABLE, covid_data_col_names, covid_data_values)
 
-    country_transformer = transformer.CountryTransformer(run_parameters, corona_db)
-    country_transformer.transform()
-
-    # TODO mimic this for display later
-    '''
-    less = TruncatedDisplay(num_lines=50)
-    "\n".join([str(x) for x in range(100)]) | less'''
+    # TODO Call factory for transformers to determine what to do; here for testing
+    transform_obj = transformer.CountryTransformer(run_parameters, corona_db)
+    results = transform_obj.transform()
+    display.Output(results).run()
