@@ -57,7 +57,7 @@ class OurWorldInDataScraper(BaseScraper):
         self.owid_country_data[country_code] = country_obj
 
     def _extract_covid_object(self, country_code, country_obj):
-        covid_data = country_obj["data"][0]
+        covid_data = country_obj["data"]
         self.owid_covid_data[country_code] = covid_data
 
     def _extract_data(self, data_dict):

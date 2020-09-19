@@ -1,4 +1,4 @@
-from coronacli.config import INPUT_TO_DB_MAP
+from coronacli.config import INPUT_TO_DB_MAP, COUNTRY_INFO_TABLE, COVID_BY_COUNTRY_TABLE
 
 from abc import ABC, abstractmethod
 
@@ -11,10 +11,22 @@ class TransformerLogic(object):
         self.source_table = None
         self.group_by_columns = None
 
-        self._parse_logic(existing_logic)
+        if existing_logic:
+            self._parse_logic(existing_logic)
 
     def _parse_logic(self, logic):
-        pass
+        if isinstance(logic, type(self)):
+            self.select_columns = logic.select_columns
+            self.filters = logic.filters
+            self.source_table = logic.source_table
+            self.group_by_columns = logic.group_by_columns
+        else:
+            raise TypeError("Expected {0} for got {1}".format(__class__, type(logic)))
+
+    def __eq__(self, other):
+        if self.__dict__ == other.__dict__ and isinstance(other, type(self)):
+            return True
+        return False
 
     @property
     def select_columns(self):
@@ -24,9 +36,9 @@ class TransformerLogic(object):
     def select_columns(self, select_columns):
         import re
         assert isinstance(select_columns, str)
-        regex = re.compile('[^a-zA-Z*, _]')
+        regex = re.compile('[^a-zA-Z0-9*, _]')
         assert len(regex.findall(select_columns)) == 0
-        regex = re.compile('[^a-zA-Z]')
+        regex = re.compile('[^a-zA-Z0-9]')
         assert len(regex.sub('', select_columns)) != len(select_columns)
 
         select_columns = select_columns.replace(" ", "")
@@ -67,6 +79,12 @@ class TransformerLogicBuilder(object):
 
             self.logic.filters += "and {0} {1} {2}".format(col, comparator, processed_val)
 
+    def select_from(self, table_name, alias=None):
+        processed_table_name = table_name
+        if alias:
+            processed_table_name += "as {0}".format(alias.replace(" ", ""))
+        self.logic.source_table = processed_table_name
+
 
 class Transformer(ABC):
 
@@ -84,7 +102,7 @@ class Transformer(ABC):
         column_names, values, types, comparators = [], [], [], []
         for parameter in self.expected_parameters:
             val = self.parameters.get(parameter, "")
-            if val != 'all':
+            if val != 'all' and val != ['all']:
                 # Get the corresponding column name and type in the DB for the expected parameter to filter
                 column_info = INPUT_TO_DB_MAP[parameter]
                 column_names.append(column_info[0])
@@ -107,6 +125,18 @@ class CountryTransformer(Transformer):
 
     def __init__(self, parameters, db):
         super().__init__(parameters, db)
+        self.country_demographics_table_name = COUNTRY_INFO_TABLE
+        self.total_country_cases_table_name = COVID_BY_COUNTRY_TABLE
+
+    def _get_country_data(self, table_name):
+        builder = TransformerLogicBuilder(self.logic)
+        builder.select_from(table_name)
+        logic = builder.logic.generate
+        return self.db.execute_query(logic, expect_results=True)
 
     def transform(self):
-        pass
+        # Get total cases by country
+        cases = self._get_country_data(self.total_country_cases_table_name)
+        print(cases)
+        # Get country demographics
+        demographics = self._get_country_data(self.country_demographics_table_name)

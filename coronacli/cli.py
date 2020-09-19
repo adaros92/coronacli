@@ -1,6 +1,6 @@
 import argparse
 
-from coronacli import db, config, scraper, utils
+from coronacli import db, config, scraper, utils, transformer
 
 
 class TruncatedDisplay(object):
@@ -96,7 +96,8 @@ def _get_country_data_values(db, scraper_class):
     country_info_values, country_info_col_names = utils.conform_db_record(
         country_information, country_information_columns)
     # Construct covid data values to insert into db table
-    covid_data_values, covid_data_col_names = utils.conform_db_record(covid_data, covid_data_columns)
+    covid_data_values, covid_data_col_names = utils.conform_nested_db_record(
+        covid_data, covid_data_columns, include_key=True, key_name="country_code")
 
     return country_info_values, country_info_col_names, covid_data_values, covid_data_col_names
 
@@ -109,14 +110,13 @@ def _insert_into_db(db, table, col_names, values):
 def main():
     args = _parse_command_line()
     run_parameters = _retrieve_arguments(args)
-    print(run_parameters)
 
     # TODO throw excepts for option combinations that are impossible (e.g. country = de, city - ny)
     # TODO throw excepts for unsupported options (e.g. country/state/city without data)
 
+    corona_db = db.DB(dbname=config.DBNAME)
     if not db.DB.db_exists(config.DBNAME) or run_parameters["reset_db"]:
         # Create database to store covid case and geographical data extracted from Internet
-        corona_db = db.DB(dbname=config.DBNAME)
         corona_db.create_tables()
 
         # Extract and insert data into DB
@@ -125,6 +125,9 @@ def main():
             _get_country_data_values(corona_db, scraper.get_scraper(config.COUNTRY_SCRAPER_NAME))
         _insert_into_db(corona_db, config.COUNTRY_INFO_TABLE, country_info_col_names, country_info_values)
         _insert_into_db(corona_db, config.COVID_BY_COUNTRY_TABLE, covid_data_col_names, covid_data_values)
+
+    country_transformer = transformer.CountryTransformer(run_parameters, corona_db)
+    country_transformer.transform()
 
     # TODO mimic this for display later
     '''

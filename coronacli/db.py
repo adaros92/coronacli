@@ -51,12 +51,12 @@ class DB:
         """
         # TODO wrap date and timestamp values in single quotes; move to utils.py
         assert len(col_names) == len(values)
+        query = "INSERT INTO {0} ({1}) VALUES \n".format(table_name, ','.join(col_names[0]))
         for idx, value_obj in enumerate(values):
             record = ', '.join(
                 ["'{0}'".format(val) if isinstance(val, str) else str(val) for val in value_obj])
-            cols = ', '.join(col_names[idx])
-            query = "INSERT INTO {0}({1}) VALUES({2});".format(table_name, cols, record)
-            self.execute_query(query)
+            query += "({0}),\n".format(record)
+        self.execute_query(query[:-2])
 
     def drop(self):
         query = "DROP DATABASE {0};".format(self.dbname)
