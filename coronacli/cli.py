@@ -61,7 +61,6 @@ def main():
     corona_db = db.DB(dbname=config.DBNAME)
     args = _parse_command_line()
     run_parameters = arguments.retrieve_arguments(args)
-    arguments.validate_arguments(run_parameters, corona_db)
 
     # TODO throw excepts for option combinations that are impossible (e.g. country = de, city - ny)
     # TODO throw excepts for unsupported options (e.g. country/state/city without data)
@@ -79,6 +78,7 @@ def main():
         _insert_into_db(corona_db, config.COVID_BY_COUNTRY_TABLE, covid_data_col_names, covid_data_values)
 
     # TODO Call factory for transformers to determine what to do; here for testing
+    arguments.validate_arguments(run_parameters, corona_db)
     transform_obj = transformer.CountryTransformer(run_parameters, corona_db)
     results = transform_obj.transform()
     display.Output(results).run()

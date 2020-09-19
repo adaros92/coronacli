@@ -8,7 +8,7 @@ config = {
     'author': 'Adams Rosales (https://github.com/arlovesdata)',
     'url': 'https://github.com/adaros92/coronacli',
     'author_email': 'adams.rosales.92@gmail.com',
-    'version': '0.1.2',
+    'version': '0.1.3',
     'install_requires': ['requests', 'sqlalchemy', 'pandas'],
     'packages': ['coronacli'],
     'package_dir': {'coronacli': 'coronacli/'},
