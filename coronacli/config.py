@@ -13,9 +13,9 @@ TABLES = {
         {'col_name': 'total_deaths', 'col_obj': Column('total_deaths', Integer)},
         {'col_name': 'new_deaths', 'col_obj': Column('new_deaths', Integer)},
         {'col_name': 'total_cases_per_million', 'col_obj': Column('total_cases_per_million', Numeric(38, 7))},
-        {'col_name': 'new_cases_per_million', 'col_obj': Column('new_cases_per_million', Numeric(38, 7))},
+        # {'col_name': 'new_cases_per_million', 'col_obj': Column('new_cases_per_million', Numeric(38, 7))},
         {'col_name': 'total_deaths_per_million', 'col_obj': Column('total_deaths_per_million', Numeric(38, 7))},
-        {'col_name': 'new_deaths_per_million', 'col_obj': Column('new_deaths_per_million', Numeric(38, 7))}
+        # {'col_name': 'new_deaths_per_million', 'col_obj': Column('new_deaths_per_million', Numeric(38, 7))}
         ]
     },
     'owid_country_data': {

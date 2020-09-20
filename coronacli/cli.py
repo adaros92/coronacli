@@ -64,8 +64,8 @@ def main():
 
     # TODO throw excepts for option combinations that are impossible (e.g. country = de, city - ny)
     # TODO throw excepts for unsupported options (e.g. country/state/city without data)
-
-    if not db.DB.db_exists(config.DBNAME) or run_parameters["reset_db"]:
+    if not db.DB.db_exists(config.DBNAME, table_name_to_test=config.COVID_BY_COUNTRY_TABLE, db=corona_db) \
+            or run_parameters["reset_db"]:
         # Create database to store covid case and geographical data extracted from Internet
         corona_db.drop_tables()
         corona_db.create_tables()

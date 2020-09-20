@@ -1,3 +1,5 @@
+from tabulate import tabulate
+
 
 class TruncatedDisplay(object):
     """ Performs similar to less command in unix OS where stdout is chunked up into a set number of
@@ -20,7 +22,8 @@ class Output(object):
         self.data_frame = data_frame
 
     def run(self):
-        print(self.data_frame)
+        prinatable_df = self.data_frame.reset_index().drop(columns="index")
+        print(tabulate(prinatable_df, headers='keys', tablefmt='psql'))
         '''
         less = display.TruncatedDisplay(num_lines=50)
         "\n".join([str(x) for x in range(100)]) | less'''

@@ -155,6 +155,7 @@ class CountryTransformer(Transformer):
         demographics_df = pd.DataFrame(demographics, columns=self.country_demographics_columns)\
             .sort_values(by=demographics_sort_key[0], ascending=demographics_sort_key[1])
 
+        '''
         combined_df = pd.merge(
-            cases_df, demographics_df, on=config.COUNTRY_TRANSFORMER["demographics_join_key"], how='left')
-        return combined_df
+            cases_df, demographics_df, on=config.COUNTRY_TRANSFORMER["demographics_join_key"], how='left')'''
+        return cases_df

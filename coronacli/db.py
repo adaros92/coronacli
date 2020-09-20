@@ -1,6 +1,6 @@
 import os
 
-from sqlalchemy import create_engine, Table, MetaData
+from sqlalchemy import create_engine, Table, MetaData, exc
 
 from coronacli.config import TABLES, SQLITE
 
@@ -90,14 +90,23 @@ class DB:
         return [col['col_obj'] for col in cols]
 
     @staticmethod
-    def db_exists(name, db_type=SQLITE):
+    def db_exists(name, db_type=SQLITE, table_name_to_test=None, db=None):
         """ Checks to see if database by given name exists
 
         :param name - the name of the database to check for
         :param db_type - the database type
+        :param table_name_to_test - an optional table name to query as a proxy for db existence
+        :param db - the db to use for querying the test table
         :returns true if the database exists, false otherwise
         """
+        exists = True
         if db_type == SQLITE:
             abs_path = '/'.join(os.path.dirname(__file__).split('/')[:-1]) + '/{0}'
-            return os.path.isfile(abs_path.format(name))
-        return False
+            exists = os.path.isfile(abs_path.format(name))
+            if not exists and table_name_to_test and db:
+                try:
+                    db.execute_query("SELECT * FROM {0}".format(table_name_to_test))
+                    exists = True
+                except exc.OperationalError:
+                    exists = False
+        return exists
