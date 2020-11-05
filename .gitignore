@@ -32,7 +32,6 @@ MANIFEST
 coronadb
 coronadb/
 main.py
-install.sh
 cleanup.sh
 
 # PyInstaller

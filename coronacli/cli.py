@@ -81,4 +81,5 @@ def main():
     arguments.validate_arguments(run_parameters, corona_db)
     transform_obj = transformer.CountryTransformer(run_parameters, corona_db)
     results = transform_obj.transform()
-    display.Output(results).run()
+    display_obj = display.get_display()
+    display_obj(results).run()
